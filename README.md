@@ -83,3 +83,28 @@ Basado en la teoría y experimentos típicos en entornos como CartPole:
 
 ### Gráficas Generadas
 Las gráficas en `results/` permiten visualizar estas diferencias. Se espera observar que la curva de retorno de Actor-Critic sea menos ruidosa y ascienda de manera más consistente que la de REINFORCE.
+
+## Experimentos y Ajuste de Hiperparámetros
+
+Se ha realizado una serie de experimentos variando la tasa de aprendizaje (Learning Rate) y el factor de descuento (Gamma) en el entorno `CartPole-v1` durante 200 episodios.
+
+### Tabla de Resultados (Promedio últimos 50 episodios)
+
+| Identificador del Experimento | Mean Return (Last 50) | Max Return |
+| :--- | :--- | :--- |
+| `reinforce_lr0.001_g0.99` | **135.70** | **373.00** |
+| `reinforce_lr0.01_g0.99` | 9.44 | 33.00 |
+| `actorcritic_lr0.001_g0.99` | 9.80 | 47.00 |
+| `actorcritic_lr0.01_g0.99` | 9.24 | 27.00 |
+| `actorcritic_lr0.001_g0.95` | 10.36 | 88.00 |
+
+### Análisis
+
+1.  **Sensibilidad al Learning Rate**:
+    *   **REINFORCE** mostró un desempeño superior con una tasa de aprendizaje de `0.001`. Al aumentar la tasa a `0.01`, el agente no logró aprender (retorno cercano al mínimo de 9-10), lo que confirma la inestabilidad de Policy Gradient con pasos de actualización demasiado grandes.
+    
+2.  **Desempeño de Actor-Critic**:
+    *   En este breve conjunto de pruebas (200 episodios), el agente **Actor-Critic** no logró superar a REINFORCE. Esto puede deberse a que Actor-Critic suele requerir un ajuste más fino de hiperparámetros (balance entre LR de actor y crítico) o un mayor número de episodios para estabilizar el entrenamiento de ambas redes simultáneamente.
+
+3.  **Conclusión**:
+    *   Para `CartPole-v1` con un presupuesto de episodios limitado, **REINFORCE con lr=0.001** resultó ser la configuración más eficiente. Actor-Critic podría requerir `target_update_freq` diferente o más exploración inicial para obtener mejores resultados.

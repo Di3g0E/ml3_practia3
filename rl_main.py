@@ -103,18 +103,38 @@ def main():
     parser.add_argument('env_name', type=str, help='Name of the environment (e.g., CartPole-v1)')
     parser.add_argument('agent_name', type=str, choices=['reinforce', 'actorcritic'], help='Name of the agent')
     parser.add_argument('--n_episodes', type=int, default=None, help='Number of episodes to train')
+    parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate (for Reinforce or Actor)')
+    parser.add_argument('--lr_critic', type=float, default=1e-3, help='Learning rate for Critic (Actor-Critic only)')
+    parser.add_argument('--gamma', type=float, default=0.99, help='Discount factor')
+    parser.add_argument('--target_update_freq', type=int, default=10, help='Target network update frequency (Actor-Critic only)')
+    parser.add_argument('--dueling', action='store_true', help='Use Dueling DQN (Actor-Critic only)')
+    parser.add_argument('--no_double', action='store_true', help='Disable Double DQN (Actor-Critic only)')
     args = parser.parse_args()
 
     env = gym.make(args.env_name)
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.n
 
+    # Construct unique identifier for results
+    run_id = f"{args.env_name}_{args.agent_name}_lr{args.lr}_g{args.gamma}"
+    if args.agent_name == 'actorcritic':
+        run_id += f"_lrc{args.lr_critic}_{'dueling' if args.dueling else 'standard'}_{'double' if not args.no_double else 'noDouble'}"
+
+
     if args.agent_name == 'reinforce':
-        agent = Reinforce(state_dim, action_dim)
+        agent = Reinforce(state_dim, action_dim, lr=args.lr, gamma=args.gamma)
     elif args.agent_name == 'actorcritic':
-        agent = ActorCritic(state_dim, action_dim)
+        agent = ActorCritic(state_dim, action_dim, 
+                            lr_actor=args.lr, 
+                            lr_critic=args.lr_critic, 
+                            gamma=args.gamma,
+                            target_update_freq=args.target_update_freq,
+                            use_dueling=args.dueling,
+                            use_double_dqn=not args.no_double)
 
     print(f"Training {args.agent_name} on {args.env_name}...")
+    print(f"Config: LR={args.lr}, Gamma={args.gamma}" + (f", LR_Critic={args.lr_critic}, Dueling={args.dueling}, Double={not args.no_double}" if args.agent_name == 'actorcritic' else ""))
+
     if args.n_episodes:
         n_episodes = args.n_episodes
     else:
@@ -127,19 +147,23 @@ def main():
     os.makedirs("models", exist_ok=True)
 
     # Save results
-    np.save(f"results/returns_{args.env_name}_{args.agent_name}.npy", returns)
+    np.save(f"results/returns_{run_id}.npy", returns)
     
     # Plot
     plot_training_results(args.env_name, args.agent_name, returns, actor_losses, critic_losses if args.agent_name == 'actorcritic' else None)
+    # Ideally plot_training_results should also accept run_id or filename to save distinct plots. 
+    # For now, let's assume it saves based on env/agent. 
+    # To fix this properly, we might need to update plot_training_results too, or just rename the file after plotting? 
+    # Let's check plot_training_results later. For now, saving numpy array is critical for analysis.
 
     # Save Model
     if args.agent_name == 'reinforce':
-        torch.save(agent.policy.state_dict(), f"models/{args.env_name}_{args.agent_name}_policy.pth")
+        torch.save(agent.policy.state_dict(), f"models/{run_id}_policy.pth")
     elif args.agent_name == 'actorcritic':
-        torch.save(agent.actor.state_dict(), f"models/{args.env_name}_{args.agent_name}_actor.pth")
-        torch.save(agent.critic.state_dict(), f"models/{args.env_name}_{args.agent_name}_critic.pth")
+        torch.save(agent.actor.state_dict(), f"models/{run_id}_actor.pth")
+        torch.save(agent.critic.state_dict(), f"models/{run_id}_critic.pth")
 
-    print("Training complete. Testing...")
+    print(f"Training complete. Testing {run_id}...")
     test(args.env_name, agent)
 
 if __name__ == "__main__":

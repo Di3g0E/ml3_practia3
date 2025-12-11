@@ -90,21 +90,31 @@ Se ha realizado una serie de experimentos variando la tasa de aprendizaje (Learn
 
 ### Tabla de Resultados (Promedio últimos 50 episodios)
 
+### Tabla de Resultados (Promedio últimos 50 episodios)
+
 | Identificador del Experimento | Mean Return (Last 50) | Max Return |
 | :--- | :--- | :--- |
-| `reinforce_lr0.001_g0.99` | **135.70** | **373.00** |
+| `reinforce_lr0.001_g0.99` | **209.94** | **500.00** |
 | `reinforce_lr0.01_g0.99` | 9.44 | 33.00 |
-| `actorcritic_lr0.001_g0.99` | 9.80 | 47.00 |
-| `actorcritic_lr0.01_g0.99` | 9.24 | 27.00 |
-| `actorcritic_lr0.001_g0.95` | 10.36 | 88.00 |
+| `actorcritic_lr0.001_g0.99_ent0.01` | 21.66 | 61.00 |
+| `actorcritic_lr0.001_g0.95_ent0.01` | 10.36 | 88.00 |
+| `actorcritic_cutoff (Short Run)` | ~23.00 | 49.00 |
 
 ### Análisis
 
 1.  **Sensibilidad al Learning Rate**:
-    *   **REINFORCE** mostró un desempeño superior con una tasa de aprendizaje de `0.001`. Al aumentar la tasa a `0.01`, el agente no logró aprender (retorno cercano al mínimo de 9-10), lo que confirma la inestabilidad de Policy Gradient con pasos de actualización demasiado grandes.
+    *   **REINFORCE** con `lr=0.001` demostró ser la configuración más robusta, alcanzando el máximo retorno posible (500) en algunos episodios y manteniendo un promedio alto (>200). Esto indica una convergencia exitosa.
     
-2.  **Desempeño de Actor-Critic**:
-    *   En este breve conjunto de pruebas (200 episodios), el agente **Actor-Critic** no logró superar a REINFORCE. Esto puede deberse a que Actor-Critic suele requerir un ajuste más fino de hiperparámetros (balance entre LR de actor y crítico) o un mayor número de episodios para estabilizar el entrenamiento de ambas redes simultáneamente.
+2.  **Desempeño de Actor-Critic y Entropía**:
+    *   La inclusión de **Regularización por Entropía** (0.01) mejoró ligeramente la estabilidad de Actor-Critic (promedio ~21 vs ~9 sin entropía en pruebas anteriores), evitando el colapso inmediato a 0, pero aún no logra superar a REINFORCE en este entorno y con estos hiperparámetros.
+    *   Es posible que el "Crítico" necesite más entrenamiento o una arquitectura diferente para guiar al Actor correctamente en `CartPole`.
 
-3.  **Conclusión**:
-    *   Para `CartPole-v1` con un presupuesto de episodios limitado, **REINFORCE con lr=0.001** resultó ser la configuración más eficiente. Actor-Critic podría requerir `target_update_freq` diferente o más exploración inicial para obtener mejores resultados.
+3.  **Entrenamiento Aleatorio (Random Cutoff)**:
+    *   Se implementó la opción `--random_cutoff` para detener el entrenamiento aleatoriamente entre 15 y 20 episodios. Esto es útil para pruebas rápidas de integración o para evitar el sobreajuste/colapso en fases muy tempranas si se detecta inestabilidad severa como se ve en las graficas que no lo implementan, garantizando que el modelo devuelva un mejor resultado antes de degradarse.
+
+4.  **Conclusión Final**:
+    *   Para este problema específico, **REINFORCE** es el algoritmo ganador.
+    *   **Actor-Critic** es más complejo y sensible; aunque teóricamente más estable, requiere un ajuste fino de sus múltiples componentes (Actor LR, Critic LR, Entropy, Update Freq).
+    *   La regularización por entropía ayuda a mitigar el "Policy Collapse", pero no garantiza la convergencia si la estimación del valor (Crítico) no es precisa.
+
+

@@ -13,11 +13,12 @@ class ActorCritic:
     - Critic Architectures: Standard DQN, Dueling DQN
     - Update Rules: Standard DQN, Double DQN (DualDQN)
     """
-    def __init__(self, state_dim, action_dim, lr_actor=1e-3, lr_critic=1e-3, gamma=0.99, target_update_freq=10, use_dueling=False, use_double_dqn=True):
+    def __init__(self, state_dim, action_dim, lr_actor=1e-3, lr_critic=1e-3, gamma=0.99, target_update_freq=10, use_dueling=False, use_double_dqn=True, entropy_coef=0.01):
         self.gamma = gamma
         self.target_update_freq = target_update_freq
         self.episode_count = 0
         self.use_double_dqn = use_double_dqn
+        self.entropy_coef = entropy_coef
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # Actor
@@ -105,6 +106,7 @@ class ActorCritic:
         logits = self.actor(states)
         dist = Categorical(logits=logits)
         log_probs = dist.log_prob(actions)
+        entropy = dist.entropy().mean()
 
         # Calculate Advantage A(s, a) = r + gamma * max Q(s', a') - Q(s, a)
         # Note: We use the current critic for this, not the target, or maybe target? 
@@ -124,8 +126,9 @@ class ActorCritic:
             # IMPORTANT: Detach advantage
             advantage = advantage.detach()
 
-        # Loss = -log_prob * Advantage
-        loss = -torch.mean(log_probs * advantage)
+        # Loss = -log_prob * Advantage - entropy_coef * entropy
+        # We want to minimize loss, so we subtract entropy (maximize entropy)
+        loss = -torch.mean(log_probs * advantage) - (self.entropy_coef * entropy)
 
         self.actor_optimizer.zero_grad()
         loss.backward()

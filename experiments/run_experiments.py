@@ -4,16 +4,16 @@ import os
 
 # Define experiments
 experiments = [
-    # REINFORCE LRs
-    {"env": "CartPole-v1", "agent": "reinforce", "lr": 1e-2, "episodes": 200},
+    # REINFORCE LRs (Long)
     {"env": "CartPole-v1", "agent": "reinforce", "lr": 1e-3, "episodes": 200},
     
-    # Actor-Critic LRs (using default Gamma 0.99)
-    {"env": "CartPole-v1", "agent": "actorcritic", "lr": 1e-2, "episodes": 200},
+    # Actor-Critic (Default Entropy 0.01) (Long)
     {"env": "CartPole-v1", "agent": "actorcritic", "lr": 1e-3, "episodes": 200},
-    
-    # Actor-Critic Gamma
     {"env": "CartPole-v1", "agent": "actorcritic", "lr": 1e-3, "gamma": 0.95, "episodes": 200},
+    
+    # Random Cutoff Experiments (Short)
+    {"env": "CartPole-v1", "agent": "reinforce", "lr": 1e-3, "random_cutoff": True},
+    {"env": "CartPole-v1", "agent": "actorcritic", "lr": 1e-3, "random_cutoff": True},
 ]
 
 # Ensure we are in project root (parent of experiments/)
@@ -40,6 +40,8 @@ for exp in experiments:
         cmd.extend(["--gamma", str(exp["gamma"])])
     if "episodes" in exp:
         cmd.extend(["--n_episodes", str(exp["episodes"])])
+    if "random_cutoff" in exp and exp["random_cutoff"]:
+        cmd.append("--random_cutoff")
         
     print(f"Running: {' '.join(cmd)}")
     subprocess.run(cmd)

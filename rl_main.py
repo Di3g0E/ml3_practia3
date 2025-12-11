@@ -98,6 +98,8 @@ def test(env_name, agent, n_episodes=5):
     
     env.close()
 
+import random
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('env_name', type=str, help='Name of the environment (e.g., CartPole-v1)')
@@ -109,16 +111,30 @@ def main():
     parser.add_argument('--target_update_freq', type=int, default=10, help='Target network update frequency (Actor-Critic only)')
     parser.add_argument('--dueling', action='store_true', help='Use Dueling DQN (Actor-Critic only)')
     parser.add_argument('--no_double', action='store_true', help='Disable Double DQN (Actor-Critic only)')
+    parser.add_argument('--entropy_coef', type=float, default=0.01, help='Entropy coefficient for Actor-Critic')
+    parser.add_argument('--random_cutoff', action='store_true', help='Stop training randomly between 15-20 episodes')
     args = parser.parse_args()
 
     env = gym.make(args.env_name)
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.n
 
+    # Determine n_episodes
+    if args.random_cutoff:
+        n_episodes = random.randint(15, 20)
+        print(f"Random Cutoff Enabled: Training for {n_episodes} episodes.")
+    elif args.n_episodes:
+        n_episodes = args.n_episodes
+    else:
+        n_episodes = 1000 if args.env_name == 'CartPole-v1' else 2000
+
     # Construct unique identifier for results
     run_id = f"{args.env_name}_{args.agent_name}_lr{args.lr}_g{args.gamma}"
     if args.agent_name == 'actorcritic':
-        run_id += f"_lrc{args.lr_critic}_{'dueling' if args.dueling else 'standard'}_{'double' if not args.no_double else 'noDouble'}"
+        run_id += f"_lrc{args.lr_critic}_{'dueling' if args.dueling else 'standard'}_{'double' if not args.no_double else 'noDouble'}_ent{args.entropy_coef}"
+    
+    if args.random_cutoff:
+        run_id += f"_cutoff{n_episodes}"
 
 
     if args.agent_name == 'reinforce':
@@ -130,16 +146,12 @@ def main():
                             gamma=args.gamma,
                             target_update_freq=args.target_update_freq,
                             use_dueling=args.dueling,
-                            use_double_dqn=not args.no_double)
+                            use_double_dqn=not args.no_double,
+                            entropy_coef=args.entropy_coef)
 
     print(f"Training {args.agent_name} on {args.env_name}...")
     print(f"Config: LR={args.lr}, Gamma={args.gamma}" + (f", LR_Critic={args.lr_critic}, Dueling={args.dueling}, Double={not args.no_double}" if args.agent_name == 'actorcritic' else ""))
 
-    if args.n_episodes:
-        n_episodes = args.n_episodes
-    else:
-        n_episodes = 1000 if args.env_name == 'CartPole-v1' else 2000
-    
     returns, actor_losses, critic_losses = train(env, agent, n_episodes=n_episodes)
 
     # Create directories

@@ -3,6 +3,7 @@ import gymnasium as gym
 import torch
 import numpy as np
 import os
+import random
 from gymnasium.wrappers import RecordVideo
 from src.agents.reinforce import Reinforce
 from src.agents.actor_critic import ActorCritic
@@ -21,12 +22,9 @@ def train(env, agent, n_episodes=1000, print_every=50):
         truncated = False
 
         while not (done or truncated):
-            # Select action
+            # Elegir acción
             if isinstance(agent, Reinforce):
                 action, log_prob = agent.act(state)
-                # Store log_prob if needed, but we re-compute in update for simplicity/safety
-                # Actually Reinforce update needs (s, a, ns, r, d)
-                pass 
             else: # ActorCritic
                 action = agent.act(state)
 
@@ -36,7 +34,7 @@ def train(env, agent, n_episodes=1000, print_every=50):
             episode_return += reward
             state = next_state
 
-        # Update agent
+        # Actualizar agente
         if isinstance(agent, Reinforce):
             loss = agent.update(episode_experiences)
             actor_losses.append(loss)
@@ -55,37 +53,22 @@ def train(env, agent, n_episodes=1000, print_every=50):
     return returns, actor_losses, critic_losses
 
 def test(env_name, agent, n_episodes=5):
-    # Create video folder
+    # Crear carpeta de videos
     video_folder = f"videos/{env_name}_{agent.__class__.__name__}"
     if not os.path.exists(video_folder):
         os.makedirs(video_folder)
 
-    # Wrap env for recording
+    # Env para grabar
     env = gym.make(env_name, render_mode="rgb_array")
     env = RecordVideo(env, video_folder, episode_trigger=lambda x: True)
 
+    # Test
     for i in range(n_episodes):
         state, _ = env.reset()
         done = False
         truncated = False
         total_reward = 0
-        while not (done or truncated):
-            # No exploration in test? 
-            # For stochastic policies, we usually take the mode (argmax) for strict "no exploration".
-            # But the requirements say "no exploration". 
-            # Our agents sample from distribution. To be strictly greedy we should take argmax logits.
-            # But `act` methods sample.
-            # Let's modify `act` or add a `greedy` flag?
-            # Or just accept that stochastic policy IS the policy.
-            # Usually "no exploration" means epsilon=0 in DQN. In PG, it means taking the mean/mode.
-            # Let's stick to sampling for now as it's the standard behavior unless specified "deterministic".
-            # Requirement: "Es importante que, en esta etapa, no haya exploración."
-            # This implies deterministic action selection.
-            # I should probably add a mode to `act` or manually handle it here.
-            # Accessing internal networks here is messy.
-            # I will assume sampling is fine for now, or maybe I should update agents to support deterministic mode.
-            # Let's update agents to support deterministic mode later if needed. For now, sampling.
-            
+        while not (done or truncated):            
             if isinstance(agent, Reinforce):
                 action, _ = agent.act(state)
             else:
@@ -98,37 +81,35 @@ def test(env_name, agent, n_episodes=5):
     
     env.close()
 
-import random
-
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('env_name', type=str, help='Name of the environment (e.g., CartPole-v1)')
-    parser.add_argument('agent_name', type=str, choices=['reinforce', 'actorcritic'], help='Name of the agent')
-    parser.add_argument('--n_episodes', type=int, default=None, help='Number of episodes to train')
-    parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate (for Reinforce or Actor)')
-    parser.add_argument('--lr_critic', type=float, default=1e-3, help='Learning rate for Critic (Actor-Critic only)')
-    parser.add_argument('--gamma', type=float, default=0.99, help='Discount factor')
-    parser.add_argument('--target_update_freq', type=int, default=10, help='Target network update frequency (Actor-Critic only)')
-    parser.add_argument('--dueling', action='store_true', help='Use Dueling DQN (Actor-Critic only)')
-    parser.add_argument('--no_double', action='store_true', help='Disable Double DQN (Actor-Critic only)')
-    parser.add_argument('--entropy_coef', type=float, default=0.01, help='Entropy coefficient for Actor-Critic')
-    parser.add_argument('--random_cutoff', action='store_true', help='Stop training randomly between 15-20 episodes')
+    parser.add_argument('env_name', type=str, help='Nombre del entorno (e.g., CartPole-v1)')
+    parser.add_argument('agent_name', type=str, choices=['reinforce', 'actorcritic'], help='Nombre del agente')
+    parser.add_argument('--n_episodes', type=int, default=None, help='Número de episodios para entrenar')
+    parser.add_argument('--lr', type=float, default=1e-3, help='Tasa de aprendizaje (para Reinforce o Actor)')
+    parser.add_argument('--lr_critic', type=float, default=1e-3, help='Tasa de aprendizaje para Critic (Actor-Critic solo)')
+    parser.add_argument('--gamma', type=float, default=0.99, help='Factor de descuento')
+    parser.add_argument('--target_update_freq', type=int, default=10, help='Frecuencia de actualización de la red objetivo (Actor-Critic solo)')
+    parser.add_argument('--dueling', action='store_true', help='Usar Dueling DQN (Actor-Critic solo)')
+    parser.add_argument('--no_double', action='store_true', help='Deshabilitar Double DQN (Actor-Critic solo)')
+    parser.add_argument('--entropy_coef', type=float, default=0.01, help='Coeficiente de entropía para Actor-Critic')
+    parser.add_argument('--random_cutoff', action='store_true', help='Detener el entrenamiento aleatoriamente entre 15-20 episodios')
     args = parser.parse_args()
 
     env = gym.make(args.env_name)
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.n
 
-    # Determine n_episodes
+    # Número de episodios
     if args.random_cutoff:
         n_episodes = random.randint(15, 20)
-        print(f"Random Cutoff Enabled: Training for {n_episodes} episodes.")
+        print(f"Corte aleatorio activado: Entrenando por {n_episodes} episodios.")
     elif args.n_episodes:
         n_episodes = args.n_episodes
     else:
         n_episodes = 1000 if args.env_name == 'CartPole-v1' else 2000
 
-    # Construct unique identifier for results
+    # Identificador único para los resultados
     run_id = f"{args.env_name}_{args.agent_name}_lr{args.lr}_g{args.gamma}"
     if args.agent_name == 'actorcritic':
         run_id += f"_lrc{args.lr_critic}_{'dueling' if args.dueling else 'standard'}_{'double' if not args.no_double else 'noDouble'}_ent{args.entropy_coef}"
@@ -149,33 +130,31 @@ def main():
                             use_double_dqn=not args.no_double,
                             entropy_coef=args.entropy_coef)
 
-    print(f"Training {args.agent_name} on {args.env_name}...")
+    print(f"Entrenando {args.agent_name} en {args.env_name}...")
     print(f"Config: LR={args.lr}, Gamma={args.gamma}" + (f", LR_Critic={args.lr_critic}, Dueling={args.dueling}, Double={not args.no_double}" if args.agent_name == 'actorcritic' else ""))
 
     returns, actor_losses, critic_losses = train(env, agent, n_episodes=n_episodes)
 
-    # Create directories
+    # Crear directorios
     os.makedirs("results", exist_ok=True)
     os.makedirs("models", exist_ok=True)
 
-    # Save results
+    # Guardar resultados
     np.save(f"results/returns_{run_id}.npy", returns)
     
-    # Plot
-    plot_training_results(args.env_name, args.agent_name, returns, actor_losses, critic_losses if args.agent_name == 'actorcritic' else None)
-    # Ideally plot_training_results should also accept run_id or filename to save distinct plots. 
-    # For now, let's assume it saves based on env/agent. 
-    # To fix this properly, we might need to update plot_training_results too, or just rename the file after plotting? 
-    # Let's check plot_training_results later. For now, saving numpy array is critical for analysis.
+    # Guardar gráfica
+    plot_training_results(args.env_name, args.agent_name, returns, actor_losses, 
+                         critic_losses if args.agent_name == 'actorcritic' else None, 
+                         run_id=run_id)
 
-    # Save Model
+    # Guardar modelo
     if args.agent_name == 'reinforce':
         torch.save(agent.policy.state_dict(), f"models/{run_id}_policy.pth")
     elif args.agent_name == 'actorcritic':
         torch.save(agent.actor.state_dict(), f"models/{run_id}_actor.pth")
         torch.save(agent.critic.state_dict(), f"models/{run_id}_critic.pth")
 
-    print(f"Training complete. Testing {run_id}...")
+    print(f"Entrenamiento completado. Test {run_id}...")
     test(args.env_name, agent)
 
 if __name__ == "__main__":

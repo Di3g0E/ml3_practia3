@@ -9,9 +9,9 @@ from src.models.value_network import DuelingQNetwork, QNetwork
 
 class ActorCritic:
     """
-    Actor-Critic Agent with support for:
-    - Critic Architectures: Standard DQN, Dueling DQN
-    - Update Rules: Standard DQN, Double DQN (DualDQN)
+    Agente Actor-Critic con soporte para:
+    - Arquitecturas Criticas: DQN estándar, Dueling DQN
+    - Reglas de Actualización: DQN estándar, Double DQN (DualDQN)
     """
     def __init__(self, state_dim, action_dim, lr_actor=1e-3, lr_critic=1e-3, gamma=0.99, target_update_freq=10, use_dueling=False, use_double_dqn=True, entropy_coef=0.01):
         self.gamma = gamma
@@ -36,8 +36,8 @@ class ActorCritic:
 
     def act(self, state):
         """
-        Selects an action given the state.
-        Returns: action
+        Selecciona una acción dada el estado.
+        Retorna: acción
         """
         state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
         logits = self.actor(state)
@@ -47,12 +47,12 @@ class ActorCritic:
 
     def update(self, episode_experiences):
         """
-        Updates Actor and Critic networks.
-        episode_experiences: list of (state, action, next_state, reward, done)
+        Actualiza las redes Actor y Critic.
+        episode_experiences: lista de (estado, acción, siguiente_estado, recompensa, hecho)
         """
         self.episode_count += 1
         
-        # Unpack experiences
+        # Desempaquetar experiencias
         states, actions, next_states, rewards, dones = zip(*episode_experiences)
         
         states = torch.FloatTensor(np.array(states)).to(self.device)
@@ -61,24 +61,24 @@ class ActorCritic:
         rewards = torch.FloatTensor(rewards).to(self.device)
         dones = torch.FloatTensor(dones).to(self.device)
 
-        # 1. Update Critic
+        # 1. Actualizar Critic
         critic_loss = self._update_critic(states, actions, next_states, rewards, dones)
 
-        # 2. Update Actor
+        # 2. Actualizar Actor
         actor_loss = self._update_actor(states, actions, next_states, rewards, dones)
 
-        # 3. Update Target Network (every N episodes)
+        # 3. Actualizar Red Target (cada N episodios)
         if self.episode_count % self.target_update_freq == 0:
             self.critic_target.load_state_dict(self.critic.state_dict())
 
         return actor_loss, critic_loss
 
     def _update_critic(self, states, actions, next_states, rewards, dones):
-        # Compute Q(s, a)
+        # Calcular Q(s, a)
         q_values = self.critic(states)
         q_value = q_values.gather(1, actions.unsqueeze(1)).squeeze(1)
 
-        # Compute Target Q(s', a')
+        # Calcular Target Q(s', a')
         with torch.no_grad():
             if self.use_double_dqn:
                 # Double DQN: action from local network, value from target network
@@ -102,20 +102,14 @@ class ActorCritic:
         return loss.item()
 
     def _update_actor(self, states, actions, next_states, rewards, dones):
-        # Re-calculate log_probs
+        # Recalcular log_probs
         logits = self.actor(states)
         dist = Categorical(logits=logits)
         log_probs = dist.log_prob(actions)
         entropy = dist.entropy().mean()
-
-        # Calculate Advantage A(s, a) = r + gamma * max Q(s', a') - Q(s, a)
-        # Note: We use the current critic for this, not the target, or maybe target? 
-        # Requirements say: A(s, a) = r + gamma * max Q(s', a) - Q(s, a)
-        # Usually for advantage we use the same values as TD error.
-        # Let's use the Target Network for the bootstrap part to be consistent with Critic update.
         
         with torch.no_grad():
-            next_q_values = self.critic_target(next_states) # Use target for stability
+            next_q_values = self.critic_target(next_states) # Usar target para estabilidad
             max_next_q_value = next_q_values.max(1)[0]
             target_q_value = rewards + self.gamma * max_next_q_value * (1 - dones)
             
@@ -123,11 +117,10 @@ class ActorCritic:
             q_value = q_values.gather(1, actions.unsqueeze(1)).squeeze(1)
             
             advantage = target_q_value - q_value
-            # IMPORTANT: Detach advantage
+            # IMPORTANTE: Desconectar advantage
             advantage = advantage.detach()
 
         # Loss = -log_prob * Advantage - entropy_coef * entropy
-        # We want to minimize loss, so we subtract entropy (maximize entropy)
         loss = -torch.mean(log_probs * advantage) - (self.entropy_coef * entropy)
 
         self.actor_optimizer.zero_grad()

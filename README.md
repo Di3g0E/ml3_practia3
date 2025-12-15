@@ -64,8 +64,15 @@ python rl_main.py <nombre_entorno> <nombre_agente> [opciones]
 ## Resultados y Conclusiones
 
 Tras la ejecución, el sistema generará varios archivos en la carpeta `results/`:
-*   Archivos `.npy` con los retornos obtenidos en cada episodio.
-*   Imágenes `.png` mostrando la curva de aprendizaje (retorno vs episodios) y las pérdidas (loss).
+*   Archivos `.npy` con los retornos obtenidos en cada episodio, nombrados con un identificador único (`run_id`) que incluye el entorno, agente y todos los hiperparámetros utilizados.
+*   Imágenes `.png` mostrando la curva de aprendizaje (retorno vs episodios) y las pérdidas (loss), también nombradas con el `run_id` único para evitar sobrescribir resultados de diferentes experimentos.
+
+**Ejemplo de nombres de archivo generados:**
+*   `returns_CartPole-v1_reinforce_lr0.001_g0.99.npy`
+*   `returns_CartPole-v1_reinforce_lr0.001_g0.99.png`
+*   `losses_CartPole-v1_reinforce_lr0.001_g0.99.png`
+
+Esto permite ejecutar múltiples experimentos con diferentes configuraciones sin perder los resultados anteriores.
 
 ### Comparativa: REINFORCE vs Actor-Critic
 
@@ -87,8 +94,6 @@ Las gráficas en `results/` permiten visualizar estas diferencias. Se espera obs
 ## Experimentos y Ajuste de Hiperparámetros
 
 Se ha realizado una serie de experimentos variando la tasa de aprendizaje (Learning Rate) y el factor de descuento (Gamma) en el entorno `CartPole-v1` durante 200 episodios.
-
-### Tabla de Resultados (Promedio últimos 50 episodios)
 
 ### Tabla de Resultados (Promedio últimos 50 episodios)
 

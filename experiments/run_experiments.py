@@ -2,7 +2,7 @@ import subprocess
 import sys
 import os
 
-# Define experiments
+# Definir experimentos
 experiments = [
     # REINFORCE LRs (Long)
     {"env": "CartPole-v1", "agent": "reinforce", "lr": 1e-3, "episodes": 200},
@@ -16,20 +16,20 @@ experiments = [
     {"env": "CartPole-v1", "agent": "actorcritic", "lr": 1e-3, "random_cutoff": True},
 ]
 
-# Ensure we are in project root (parent of experiments/)
+# Asegurarse de estar en la raíz del proyecto (padre de experiments/)
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 os.chdir(project_root)
 
-print(f"Running experiments from {os.getcwd()}")
+print(f"Ejecutando experimentos desde {os.getcwd()}")
 
-# Find the venv python
+# Buscar el python del venv
 venv_python = os.path.join(project_root, ".venv", "Scripts", "python.exe")
 if os.path.exists(venv_python):
     python_exe = venv_python
-    print(f"Using venv python: {python_exe}")
+    print(f"Usando python del venv: {python_exe}")
 else:
     python_exe = sys.executable
-    print(f"Using system python: {python_exe}")
+    print(f"Usando python del sistema: {python_exe}")
 
 for exp in experiments:
     cmd = [python_exe, "rl_main.py", exp["env"], exp["agent"]]
@@ -43,7 +43,7 @@ for exp in experiments:
     if "random_cutoff" in exp and exp["random_cutoff"]:
         cmd.append("--random_cutoff")
         
-    print(f"Running: {' '.join(cmd)}")
+    print(f"Ejecutando experimento: {' '.join(cmd)}")
     subprocess.run(cmd)
 
-print("All experiments completed.")
+print("Todos los experimentos completados.")

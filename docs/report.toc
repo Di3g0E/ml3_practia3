@@ -1,0 +1,14 @@
+\babel@toc {spanish}{}\relax 
+\contentsline {section}{\numberline {1}Introducción}{2}{section.1}%
+\contentsline {section}{\numberline {2}Diagrama de Clases del Sistema}{2}{section.2}%
+\contentsline {section}{\numberline {3}Resultados Experimentales Base}{3}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Tabla de Rendimiento Medio}{3}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Gráficas de Comparación}{3}{subsection.3.2}%
+\contentsline {section}{\numberline {4}Análisis Avanzado: Mejoras del Agente}{4}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Dueling DQN y Target Network}{4}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Regularización por Entropía}{4}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}Experimento de Ablación}{4}{subsection.4.3}%
+\contentsline {section}{\numberline {5}Implementación de Funciones de Pérdida}{5}{section.5}%
+\contentsline {subsection}{\numberline {5.1}REINFORCE: Policy Gradient}{5}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}Actor-Critic: Crítico (MSE con Target)}{5}{subsection.5.2}%
+\contentsline {subsection}{\numberline {5.3}Actor-Critic: Actor (con Entropía)}{5}{subsection.5.3}%

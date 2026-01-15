@@ -1,6 +1,6 @@
 # Práctica 3: Aprendizaje por Refuerzo (Reinforcement Learning)
 
-Este proyecto implementa y compara dos algoritmos fundamentales de Aprendizaje por Refuerzo: **REINFORCE** y **Actor-Critic**. Los agentes son entrenados y evaluados en entornos de Gymnasium como `CartPole-v1`.
+Este proyecto implementa y compara dos algoritmos fundamentales de Aprendizaje por Refuerzo: **REINFORCE** y **Actor-Critic**. Los agentes son entrenados y evaluados en entornos de Gymnasium como `CartPole-v1` o `LunarLander-v2`.
 
 ## Requisitos
 

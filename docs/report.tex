@@ -1,0 +1,232 @@
+\documentclass[a4paper,12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage{tcolorbox}
+\usepackage{color}
+\usepackage{tikz}
+\usepackage{subcaption}
+\usepackage{float}
+\usepackage[left=2cm,right=2cm,top=3.5cm,bottom=3.5cm]{geometry}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2
+}
+\lstset{style=mystyle}
+
+% Portada
+\title{\Huge \textbf{Práctica 3: Algoritmos de Aprendizaje por Refuerzo (REINFORCE y Actor-Critic)}}
+\author{Diego (GIA URJC)}
+\date{\today}
+
+\begin{document}
+
+\begin{titlepage}
+    \maketitle
+
+    \begin{figure}[h]
+        \centering
+        \includegraphics[width=0.6\textwidth]{Logo_URJC.png}
+        \label{fig:logo}
+    \end{figure}
+\end{titlepage}
+\tableofcontents
+\newpage
+
+\section{Introducción}
+El objetivo de esta práctica es implementar y comparar algoritmos de Aprendizaje por Refuerzo (Reinforcement Learning) en entornos clásicos de control como \texttt{CartPole-v1} y \texttt{LunarLander-v3}. Se han desarrollado agentes basados en políticas: \textbf{REINFORCE} (Monte Carlo Policy Gradient) y \textbf{Actor-Critic}, analizando sus diferencias en convergencia y estabilidad.
+
+Para optar a la calificación de sobresaliente, se ha profundizado en técnicas avanzadas como \textbf{Dueling DQN}, \textbf{Target Networks} y regularización por \textbf{Entropía}.
+
+\section{Diagrama de Clases del Sistema}
+A continuación se presenta el diseño orientado a objetos del sistema.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+    % Definición manual simplificada usando nodos de TikZ
+    \node (Reinforce) [draw, rectangle, minimum width=4cm] at (0,0) {
+        \begin{tabular}{l}
+        \textbf{Reinforce} \\
+        \hline
+        + gamma: float \\
+        + state\_dim: int \\
+        + action\_dim: int \\
+        + policy: PolicyNetwork \\
+        + optimizer: Optimizer \\
+        + device: Device \\
+        \hline
+        + \_\_init\_\_(...) \\
+        + act(...): action, log\_prob \\
+        + update(...): dict
+        \end{tabular}
+    };
+
+    \node (ActorCritic) [draw, rectangle, minimum width=4cm] at (8,0) {
+        \begin{tabular}{l}
+        \textbf{ActorCritic} \\
+        \hline
+        + gamma: float \\
+        + entropy\_coef: float \\
+        + use\_double\_dqn: bool \\
+        + use\_dueling: bool \\
+        + actor: PolicyNetwork \\
+        + critic: QNetwork \\
+        + critic\_target: Network \\
+        \hline
+        + \_\_init\_\_(...) \\
+        + act(state): action \\
+        + update(...): dict \\
+        + \_update\_critic(...) \\
+        + \_update\_actor(...)
+        \end{tabular}
+    };
+
+    \node (Policy) [draw, rectangle, minimum width=3cm] at (4, -5) {
+        \begin{tabular}{l}
+        \textbf{PolicyNetwork} \\
+        \hline
+        + fc1: Linear \\
+        + fc2: Linear \\
+        \hline
+        + forward(x): logits
+        \end{tabular}
+    };
+    
+    \draw[->, dashed] (Reinforce) -- (Policy) node[midway, left] {usa};
+    \draw[->, dashed] (ActorCritic) -- (Policy) node[midway, right] {usa (Actor)};
+\end{tikzpicture}
+\caption{Diagrama de Clases UML del Sistema de Agentes RL.}
+\end{figure}
+
+\newpage
+\section{Resultados Experimentales Base}
+Esta sección detalla el rendimiento de los agentes en los entornos de prueba.
+
+\subsection{Tabla de Rendimiento Medio}
+\begin{table}[H]
+\centering
+\begin{tabular}{llccc}
+\toprule
+\textbf{Entorno} & \textbf{Agente} & \textbf{Retorno Medio} & \textbf{Std} & \textbf{Máximo} \\
+\midrule
+CartPole-v1 & Reinforce & 240.71 & 168.78 & 500.00 \\
+CartPole-v1 & Actor-Critic (Base) & 487.23 & 42.10 & 500.00 \\
+\midrule
+LunarLander-v3 & Reinforce & 68.91 & 159.43 & 316.37 \\
+LunarLander-v3 & Actor-Critic (Base) & -186.36 & 113.34 & 258.55 \\
+\bottomrule
+\end{tabular}
+\caption{Resultados experimentales comparativos.}
+\end{table}
+
+\subsection{Gráficas de Comparación}
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.48\textwidth}
+        \includegraphics[width=\textwidth]{../results/comparison_CartPole-v1.png}
+        \caption{CartPole-v1}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \includegraphics[width=\textwidth]{../results/comparison_LunarLander-v3.png}
+        \caption{LunarLander-v3}
+    \end{subfigure}
+    \caption{Comparación de curvas de aprendizaje (Retorno promedio).}
+\end{figure}
+
+\newpage
+
+\section{Análisis Avanzado: Mejoras del Agente}
+Para optar a la calificación de sobresaliente, se han implementado mejoras críticas en el algoritmo Actor-Critic.
+
+\subsection{Dueling DQN y Target Network}
+Se sustituyó la red del Crítico por una arquitectura \textbf{Dueling DQN}, que descompone el valor Q en:
+\[ Q(s, a) = V(s) + \left( A(s, a) - \frac{1}{|\mathcal{A}|} \sum_{a'} A(s, a') \right) \]
+Esto permite aprender $V(s)$ de forma independiente a las acciones, acelerando la convergencia. Además, se usa una \textbf{Target Network} con actualización diferida (cada 10 episodios) para mejorar la estabilidad.
+
+\subsection{Regularización por Entropía}
+Se añadió un término de entropía a la función de pérdida del actor para incentivar la exploración y evitar mínimos locales (políticas deterministas prematuras):
+\[ L_{actor} = - \mathbb{E} [\log \pi(a|s) A(s,a)] - \beta H(\pi(\cdot|s)) \]
+Con $\beta = 0.01$.
+
+\subsection{Experimento de Ablación}
+Se compararon las variantes en \texttt{CartPole-v1} (400 episodios).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\textwidth]{../results/advanced_comparison.png}
+    \caption{Impacto de Dueling DQN y Entropía en la convergencia.}
+\end{figure}
+
+\textbf{Conclusión:} La variante \textbf{AC Dueling (Naranja)} ofrece la convergencia más rápida y estable. La ausencia de entropía (\textbf{AC No Entropy}, verde) provoca el colapso de la política, impidiendo el aprendizaje.
+
+\section{Implementación de Funciones de Pérdida}
+A continuación se muestran los fragmentos de código clave utilizados para el entrenamiento.
+
+\subsection{REINFORCE: Policy Gradient}
+\begin{lstlisting}[language=Python]
+# Calcular perdida: sum(-log_prob * G_t)
+policy_loss = []
+# saved_log_probs y returns (Gt) alineados
+for log_prob, Gt in zip(saved_log_probs, returns):
+    policy_loss.append(-log_prob * Gt)
+    
+policy_loss = torch.cat(policy_loss).sum()
+self.optimizer.zero_grad()
+policy_loss.backward()
+\end{lstlisting}
+
+\subsection{Actor-Critic: Crítico (MSE con Target)}
+\begin{lstlisting}[language=Python]
+# Target Q usando red objetivo
+target_q_val = rewards + gamma * max_next_q_target * (1 - dones)
+
+# Loss (MSE) entre Q actual y Target
+loss = F.mse_loss(q_value, target_q_val)
+
+self.critic_optimizer.zero_grad()
+loss.backward()
+self.critic_optimizer.step()
+\end{lstlisting}
+
+\subsection{Actor-Critic: Actor (con Entropía)}
+\begin{lstlisting}[language=Python]
+# Advantage calculado con Target Critic (detached)
+advantage = (target_q_val - q_value).detach()
+
+# Loss = -log_prob * Advantage - entropy_coef * entropy
+loss = -torch.mean(log_probs * advantage) - (self.entropy_coef * entropy)
+
+self.actor_optimizer.zero_grad()
+loss.backward()
+self.actor_optimizer.step()
+\end{lstlisting}
+
+\end{document}

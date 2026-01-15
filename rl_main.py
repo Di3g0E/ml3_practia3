@@ -17,6 +17,7 @@ def train(env, agent, n_episodes=1000, print_every=50):
     for i_episode in range(1, n_episodes + 1):
         state, _ = env.reset()
         episode_experiences = []
+        saved_log_probs = []
         episode_return = 0
         done = False
         truncated = False
@@ -25,6 +26,7 @@ def train(env, agent, n_episodes=1000, print_every=50):
             # Elegir acción
             if isinstance(agent, Reinforce):
                 action, log_prob = agent.act(state)
+                saved_log_probs.append(log_prob)
             else: # ActorCritic
                 action = agent.act(state)
 
@@ -36,8 +38,10 @@ def train(env, agent, n_episodes=1000, print_every=50):
 
         # Actualizar agente
         if isinstance(agent, Reinforce):
-            loss = agent.update(episode_experiences)
-            actor_losses.append(loss)
+            rewards = [e[3] for e in episode_experiences]
+            loss_dict = agent.update(saved_log_probs, rewards)
+            actor_losses.append(loss_dict['actor_loss'])
+            critic_losses.append(loss_dict['critic_loss'])
         else:
             actor_loss, critic_loss = agent.update(episode_experiences)
             actor_losses.append(actor_loss)
@@ -63,6 +67,7 @@ def test(env_name, agent, n_episodes=5):
     env = RecordVideo(env, video_folder, episode_trigger=lambda x: True)
 
     # Test
+    test_returns = []
     for i in range(n_episodes):
         state, _ = env.reset()
         done = False
@@ -70,7 +75,7 @@ def test(env_name, agent, n_episodes=5):
         total_reward = 0
         while not (done or truncated):            
             if isinstance(agent, Reinforce):
-                action, _ = agent.act(state)
+                action, _ = agent.act(state, deterministic=True)
             else:
                 action = agent.act(state)
             
@@ -78,8 +83,11 @@ def test(env_name, agent, n_episodes=5):
             total_reward += reward
             state = next_state
         print(f"Test Episode {i+1}: Return {total_reward}")
+        test_returns.append(total_reward)
     
     env.close()
+    return np.mean(test_returns)
+
 
 def main():
     parser = argparse.ArgumentParser()

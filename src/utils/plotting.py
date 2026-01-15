@@ -64,3 +64,33 @@ def plot_comparison(env_name, returns_reinforce, returns_actor_critic):
     plt.grid(True)
     plt.savefig(f'results/comparison_{env_name}.png')
     plt.close()
+
+def plot_test_bar_chart(test_results):
+    """
+    Gráfica de barras comparando el retorno medio en test para cada par (entorno, agente).
+    
+    Args:
+        test_results: Lista de tuplas (env, agent, mean_return)
+    """
+    labels = [f"{env}\n({agent})" for env, agent, mean in test_results]
+    means = [mean for env, agent, mean in test_results]
+    
+    plt.figure(figsize=(10, 6))
+    colors = ['#3498db', '#e74c3c'] * (len(test_results) // 2 + 1)
+    bars = plt.bar(labels, means, color=colors[:len(test_results)])
+    
+    plt.title('Comparativa de Rendimiento: Retorno Medio en Test (5 episodios)', fontsize=14, pad=20)
+    plt.ylabel('Retorno Medio', fontsize=12)
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+    
+    # Añadir los valores encima/debajo de las barras
+    for bar in bars:
+        yval = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width()/2, yval, f'{yval:.1f}', 
+                 va='bottom' if yval >= 0 else 'top', ha='center', fontweight='bold')
+        
+    plt.axhline(0, color='black', linewidth=0.8) # Línea en el cero
+    plt.tight_layout()
+    plt.savefig('results/test_comparison_bar_chart.png')
+    plt.close()
+

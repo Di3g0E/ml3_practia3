@@ -31,7 +31,7 @@ class ActorCritic:
         else:
             self.critic = QNetwork(state_dim, action_dim).to(self.device)
             
-        self.critic_target = copy.deepcopy(self.critic)
+        self.critic_target = copy.deepcopy(self.critic)  # Crear una copia de la red critic_target que se usara para calcular el target
         self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=lr_critic)
 
     def act(self, state):
@@ -117,7 +117,7 @@ class ActorCritic:
             q_value = q_values.gather(1, actions.unsqueeze(1)).squeeze(1)
             
             advantage = target_q_value - q_value
-            # IMPORTANTE: Desconectar advantage
+            # IMPORTANTE: Desconectar advantage para evitar la propagación del gradiente
             advantage = advantage.detach()
 
         # Loss = -log_prob * Advantage - entropy_coef * entropy

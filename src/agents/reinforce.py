@@ -1,67 +1,91 @@
 import torch
 import torch.optim as optim
 from torch.distributions import Categorical
-import numpy as np
 from src.models.policy_network import PolicyNetwork
 
 class Reinforce:
     """
-    Agente REINFORCE con acciones discretas.
+    Agente REINFORCE.
+    
+    Siguiendo la estructura del notebook 05a_REINFORCE.ipynb:
+    - Se acumulan los log_probs durante el episodio.
+    - Se actualiza al final del episodio usando esos log_probs guardados.
+    - Adaptado para acciones discretas (Categorical).
     """
     def __init__(self, state_dim, action_dim, lr=1e-3, gamma=0.99):
         self.gamma = gamma
+        self.state_dim = state_dim
+        self.action_dim = action_dim
+        
+        # Reutilizamos la PolicyNetwork existente, que ya devuelve logits
         self.policy = PolicyNetwork(state_dim, action_dim)
         self.optimizer = optim.Adam(self.policy.parameters(), lr=lr)
+        
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.policy.to(self.device)
 
-    def act(self, state):
+    def act(self, state, deterministic=False):
         """
         Selecciona una acción dada el estado.
-        Retorna: acción, log_prob
+        Retorna: acción (int), log_prob (tensor con gradiente)
         """
-        state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
+        # Convertir estado a tensor
+        state = torch.from_numpy(state).float().unsqueeze(0).to(self.device)
+        
+        # Forward pass: obtener logits
         logits = self.policy(state)
+        
+        # Crear distribución categórica
         dist = Categorical(logits=logits)
-        action = dist.sample()
+        
+        if deterministic:
+            # En modo determinista, elegimos la acción con mayor probabilidad
+            action = logits.argmax(dim=1)
+        else:
+            # Muestrear acción
+            action = dist.sample()
+        
+        # Calcular log_prob de la acción seleccionada
         log_prob = dist.log_prob(action)
+        
         return action.item(), log_prob
 
-    def update(self, episode_experiences):
+    def update(self, saved_log_probs, rewards, **kwargs):
         """
-        Actualiza la red de política usando las experiencias del episodio.
-        episode_experiences: lista de (estado, acción, siguiente_estado, recompensa, hecho)
-        """
-        # Desempaquetar experiencias
-        rewards = [r for (_, _, _, r, _) in episode_experiences]
+        Actualiza la política usando los log_probs guardados y las recompensas observadas.
+        **kwargs: Argumentos adicionales ignorados por Reinforce (states, next_states, dones).
         
-        # Calcular retornos descuentos
+        Returns:
+            dict: Diccionario con las pérdidas {'actor_loss': ..., 'critic_loss': 0}
+        """
+        R = 0
         returns = []
-        G = 0
+        
+        # Calcular retornos descontados (G_t)
         for r in reversed(rewards):
-            G = r + self.gamma * G
-            returns.insert(0, G)
+            R = r + self.gamma * R
+            returns.insert(0, R)
+            
+        returns = torch.tensor(returns).float().to(self.device)
         
-        returns = torch.tensor(returns).to(self.device)
-        # Normalizar retornos para estabilidad
-        returns = (returns - returns.mean()) / (returns.std() + 1e-9)
-
-        states = [s for (s, _, _, _, _) in episode_experiences]
-        actions = [a for (_, a, _, _, _) in episode_experiences]
+        # Normalizar retornos (estabilidad numérica)
+        if len(returns) > 1: # Evitar NaN si solo hay 1 paso y std es 0
+            returns = (returns - returns.mean()) / (returns.std() + 1e-9)
         
-        states = torch.FloatTensor(np.array(states)).to(self.device)
-        actions = torch.LongTensor(actions).to(self.device)
+        policy_loss = []
         
-        logits = self.policy(states)
-        dist = Categorical(logits=logits)
-        log_probs = dist.log_prob(actions)
-
-        # Calcular pérdida
-        loss = -torch.sum(log_probs * returns)
-
-        # Optimizar
+        # Calcular pérdida: sum(-log_prob * G_t)
+        # Nota: saved_log_probs y returns deben estar alineados
+        for log_prob, Gt in zip(saved_log_probs, returns):
+            policy_loss.append(-log_prob * Gt)
+            
+        # Sumar todas las pérdidas del episodio
+        # log_prob tiene dimensión (1,), necesitamos sumar todo
+        policy_loss = torch.cat(policy_loss).sum()
+        
+        # Optimización
         self.optimizer.zero_grad()
-        loss.backward()
+        policy_loss.backward()
         self.optimizer.step()
         
-        return loss.item()
+        return {'actor_loss': policy_loss.item(), 'critic_loss': 0.0}

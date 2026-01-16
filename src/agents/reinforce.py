@@ -75,12 +75,10 @@ class Reinforce:
         policy_loss = []
         
         # Calcular pérdida: sum(-log_prob * G_t)
-        # Nota: saved_log_probs y returns deben estar alineados
         for log_prob, Gt in zip(saved_log_probs, returns):
             policy_loss.append(-log_prob * Gt)
             
         # Sumar todas las pérdidas del episodio
-        # log_prob tiene dimensión (1,), necesitamos sumar todo
         policy_loss = torch.cat(policy_loss).sum()
         
         # Optimización

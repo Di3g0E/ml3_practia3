@@ -2,10 +2,8 @@ import os
 import gymnasium as gym
 import numpy as np
 import argparse
-
 import sys
 
-# Añadir el directorio raíz del proyecto al path para poder importar módulos (Lineas generadas por Gemini)
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
 os.chdir(project_root)
@@ -14,6 +12,7 @@ from rl_main import train, test
 from src.agents.reinforce import Reinforce
 from src.agents.actor_critic import ActorCritic
 from src.utils.plotting import plot_training_results, plot_comparison, plot_test_bar_chart
+
 
 def run_experiment(env_name, agent_type, n_episodes):
     print(f"\n--- Iniciando: {agent_type} en {env_name} ({n_episodes} episodios) ---")

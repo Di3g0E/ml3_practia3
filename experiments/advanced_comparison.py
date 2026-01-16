@@ -4,7 +4,6 @@ import gymnasium as gym
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Add parent directory to path to import modules
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.agents.actor_critic import ActorCritic
@@ -15,13 +14,12 @@ def run_comparison():
     env_name = 'CartPole-v1'
     n_episodes = 400
     
-    print(f"--- Running Advanced Comparison on {env_name} ({n_episodes} episodes) ---")
+    print(f"--- Ejecución de comparación avanzada para {env_name} ({n_episodes} episodios) ---")
     
     results = {}
     
     # 1. AC Standard (Baseline for AC)
-    # Double DQN is default True. Dueling is default False. Entropy default 0.01.
-    print("Training AC Standard (No Dueling)...")
+    print("Entrenamiento de AC Standard (No Dueling)...")
     env = gym.make(env_name)
     agent_std = ActorCritic(env.observation_space.shape[0], env.action_space.n, 
                             lr_actor=1e-3, lr_critic=1e-3, gamma=0.99,
@@ -31,7 +29,7 @@ def run_comparison():
     env.close()
 
     # 2. AC Dueling
-    print("Training AC Dueling...")
+    print("Entrenamiento de AC Dueling...")
     env = gym.make(env_name)
     agent_duel = ActorCritic(env.observation_space.shape[0], env.action_space.n, 
                              lr_actor=1e-3, lr_critic=1e-3, gamma=0.99,
@@ -40,8 +38,8 @@ def run_comparison():
     results['AC Dueling'] = returns_duel
     env.close()
 
-    # 3. AC No Entropy (No Exploration)
-    print("Training AC No Entropy...")
+    # 3. AC No Entropy (No Exploracion)
+    print("Entrenamiento de AC No Entropy...")
     env = gym.make(env_name)
     agent_no_ent = ActorCritic(env.observation_space.shape[0], env.action_space.n, 
                                lr_actor=1e-3, lr_critic=1e-3, gamma=0.99,
@@ -62,13 +60,13 @@ def run_comparison():
         smoothed = np.convolve(returns, np.ones(window)/window, mode='valid')
         plt.plot(smoothed, label=label)
         
-    plt.title(f'Comparison of AC Architectures on {env_name}')
-    plt.xlabel('Episode')
-    plt.ylabel('Return (Smoothed)')
+    plt.title(f'Comparación de arquitecturas de AC en {env_name}')
+    plt.xlabel('Episodio')
+    plt.ylabel('Return (Suavizado)')
     plt.legend()
     plt.grid(True)
     plt.savefig('../results/advanced_comparison.png')
-    print("Plot saved to results/advanced_comparison.png")
+    print("Plot guardado en results/advanced_comparison.png")
 
 if __name__ == "__main__":
     run_comparison()

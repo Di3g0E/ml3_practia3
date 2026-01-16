@@ -2,7 +2,6 @@ import numpy as np
 import os
 import glob
 
-# Asegurarse de buscar en el directorio correcto (un nivel arriba de experiments/)
 results_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "results")
 
 print(f"{'Run ID':<60} | {'Mean Return (Last 50)':<20} | {'Max Return':<10}")

@@ -81,12 +81,12 @@ class ActorCritic:
         # Calcular Target Q(s', a')
         with torch.no_grad():
             if self.use_double_dqn:
-                # Double DQN: action from local network, value from target network
+                # Double DQN: accion de la red local, valor de la red target
                 next_actions = self.critic(next_states).argmax(dim=1)
                 next_q_values = self.critic_target(next_states)
                 max_next_q_value = next_q_values.gather(1, next_actions.unsqueeze(1)).squeeze(1)
             else:
-                # Standard DQN: max value from target network
+                # Standard DQN: maximo valor de la red target
                 next_q_values = self.critic_target(next_states)
                 max_next_q_value = next_q_values.max(1)[0]
                 
